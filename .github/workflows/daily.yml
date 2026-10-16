@@ -1,0 +1,43 @@
+name: Daily ETF Data Update
+
+on:
+  schedule:
+    # 北京时间 每个交易日 18:30（= 10:30 UTC），收盘数据已稳定
+    - cron: "30 10 * * 1-5"
+    # 北京时间 次日 08:30（= 00:30 UTC）补跑一次，防漏
+    - cron: "30 0 * * 2-6"
+  workflow_dispatch:        # 支持手动触发
+
+permissions:
+  contents: write           # 允许把数据 commit 回仓库
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Crawl today's data
+        run: python scripts/update_daily.py
+
+      - name: Commit and push data
+        run: |
+          git config user.name  "etf-lite-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "没有新数据（非交易日或已更新），跳过提交"
+          else
+            git commit -m "data: update $(date -u -d '+8 hours' +'%Y-%m-%d')"
+            git push
+          fi
