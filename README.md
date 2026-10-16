@@ -93,10 +93,13 @@ etf-lite/
 # 1. 在你电脑上，进入本目录
 cd etf-lite
 
-# 2. 首次初始化历史数据（老库导出）
+# 2. 首次初始化历史数据（老库导出，已跑通：2015-2026 共 142.7 万行）
 python scripts/backfill_from_sqlite.py --db ../etf-index-data/data/etf_data.db
 #    或者从网上爬历史：
 # python scripts/backfill_history.py --start 2015-01-01
+
+# 2b. 补缺口（老库截止 2026-07-03，中间 3 个多月是空的，约 15 分钟）
+python scripts/backfill_history.py --start 2026-07-04
 
 # 3. 跑一次当天增量，确认全链路通
 python scripts/update_daily.py
