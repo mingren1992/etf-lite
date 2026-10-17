@@ -1,0 +1,45 @@
+# CI network diagnostics
+time: Sat Oct 17 13:13:50 UTC 2026
+runner: Linux
+git_head: 25e7b9c
+
+## check log
+[check] fail  Êó†Êï∞ÊçÆ
+exit_code=2
+
+## endpoint probes
+--- https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510300&fields1=f1&fields2=f51,f53,f57,f61&klt=101&fqt=0&lmt=2
+http=200 time=1.320419s size=83
+{"rc":102,"rt":1,"svr":177617935,"lt":2,"full":1,"dlmkts":"","dsc":"0","data":null}
+--- http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510300&fields1=f1&fields2=f51,f53,f57,f61&klt=101&fqt=0&lmt=2
+http=200 time=1.396130s size=83
+{"rc":102,"rt":1,"svr":177617925,"lt":2,"full":1,"dlmkts":"","dsc":"0","data":null}
+--- https://push2delay.eastmoney.com/api/qt/stock/kline/get?secid=1.510300&fields1=f1&fields2=f51,f53,f57,f61&klt=101&fqt=0&lmt=2
+http=200 time=1.168142s size=91
+{"rc":102,"rt":1,"svr":177622402,"lt":2,"full":1,"dlmkts":"8,10,128","dsc":"0","data":null}
+--- https://push2.eastmoney.com/api/qt/stock/get?secid=1.510300&fields=f43,f57,f58
+http=302 time=1.269936s size=0
+
+--- https://quote.eastmoney.com/sh510300.html
+http=200 time=3.327780s size=37231
+<!DOCTYPE html><html><head><meta name="sinfo" data-bz="STime: 2026-10-17 21:12:12 SNum: 191"/><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="X-UA-Compatible" content="IE=Edge,
+--- https://d.10jqka.com.cn/v6/line/hs_510300/00/all.js
+http=200 time=2.236088s size=105105
+quotebridge_v6_line_hs_510300_00_all({"start":"20120528","total":"3495","name":"\u6caa\u6df1300ETF\u534e\u6cf0\u67cf\u745e","marketType":"","sortYear":[[2012,150],[2013,238],[2014,245],[2015,244],[2016,244],[2017,244],[2018,243],[2019,244],
+--- https://qt.gtimg.cn/q=sh510300
+http=200 time=1.317311s size=560
+v_sh510300="1~ª¶…Ó300ETFª™Ã©∞ÿ»~510300~4.236~4.242~4.255~37995085~23586339~14408746~4.236~28915~4.235~46083~4.234~92786~4.233~30987~4.232~10324~4.237~120~4.238~162~4.239~526~4.240~2165~4.241~1458~~20261016161459~-0.006~-0.14~4.282~4.200~4.
+--- https://stock.xueqiu.com
+http=403 time=0.816064s size=552
+<html>
+<head><title>403 Forbidden</title></head>
+<body>
+<center><h1>403 Forbidden</h1></center>
+<hr><center>openresty</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disab
+
+## dns
+2402:4e00:1201:809:0:9eee:537e:ee22 push2hisipv6.trafficmanager.cn push2his.eastmoney.com
