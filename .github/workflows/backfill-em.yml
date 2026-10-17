@@ -57,9 +57,51 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Connectivity check (eastmoney)
-        run: python scripts/backfill_em_v2.py --check
+        id: check
+        continue-on-error: true
+        run: |
+          set +e
+          python scripts/backfill_em_v2.py --check > /tmp/check.log 2>&1
+          echo "exit_code=$?" >> /tmp/check.log
+          cat /tmp/check.log
+
+      - name: Network diagnostics (write back to repo)
+        if: always()
+        run: |
+          {
+            echo "# CI network diagnostics"
+            echo "time: $(date -u)"
+            echo "runner: $RUNNER_OS"
+            echo "git_head: $(git rev-parse --short HEAD)"
+            echo
+            echo "## check log"
+            cat /tmp/check.log 2>/dev/null || echo "(no log)"
+            echo
+            echo "## endpoint probes"
+            probe () {
+              echo "--- $1"
+              curl -s -o /tmp/body -w "http=%{http_code} time=%{time_total}s size=%{size_download}" \
+                   --max-time 20 -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0 Safari/537.36" \
+                   -H "Referer: https://quote.eastmoney.com/" "$1" 2>&1
+              echo
+              head -c 240 /tmp/body 2>/dev/null; echo
+            }
+            probe "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510300&fields1=f1&fields2=f51,f53,f57,f61&klt=101&fqt=0&lmt=2"
+            probe "http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.510300&fields1=f1&fields2=f51,f53,f57,f61&klt=101&fqt=0&lmt=2"
+            probe "https://push2delay.eastmoney.com/api/qt/stock/kline/get?secid=1.510300&fields1=f1&fields2=f51,f53,f57,f61&klt=101&fqt=0&lmt=2"
+            probe "https://push2.eastmoney.com/api/qt/stock/get?secid=1.510300&fields=f43,f57,f58"
+            probe "https://quote.eastmoney.com/sh510300.html"
+            probe "https://d.10jqka.com.cn/v6/line/hs_510300/00/all.js"
+            probe "https://qt.gtimg.cn/q=sh510300"
+            probe "https://stock.xueqiu.com"
+            echo
+            echo "## dns"
+            getent hosts push2his.eastmoney.com || echo "getent failed"
+          } > ci_diag.txt 2>&1
+          cat ci_diag.txt
 
       - name: Backfill amount & turnover_rate
+        if: steps.check.outcome == 'success'
         env:
           IN_LIMIT: ${{ github.event.inputs.limit }}
           IN_SLEEP: ${{ github.event.inputs.sleep }}
@@ -76,17 +118,19 @@ jobs:
           fi
 
       - name: Data health check
+        if: steps.check.outcome == 'success'
         run: python scripts/check_data.py || true
 
       - name: Commit and push data
+        if: always()
         run: |
           git config user.name  "etf-lite-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data/
+          git add data/ ci_diag.txt 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "没有变化，跳过提交"
           else
-            git commit -m "data: backfill amount & turnover_rate (eastmoney)"
-            git pull --rebase --autostash origin main
+            git commit -m "data: backfill amount & turnover_rate (eastmoney) + ci diagnostics"
+            git pull --rebase --autostash origin main || true
             git push
           fi
