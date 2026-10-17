@@ -154,8 +154,9 @@ data/
 | change_pct                | float | 涨跌幅 %            |
 | turnover_rate             | float | 换手率 %（历史回填行为空）   |
 
-> 历史回填的行 `amount` 为 0、`turnover_rate` 为空，是数据源只给 K 线不给成交额所致；  
-> 每个当日快照都带全这两个字段，并自动覆盖同日历史值。
+> **关于历史数据质量**：`amount`（成交额）与 `turnover_rate`（换手率）在早期的历史回填行中可能为空，
+> 因为部分行情源只给 K 线不给成交额。每个交易日的当日快照始终带全这两个字段，并自动覆盖同日历史值。
+> 如需完整成交额历史，用 `scripts/backfill_em.py`（东方财富源，自带成交额）重跑一遍即可。
 
 ## 工作原理
 
@@ -166,7 +167,7 @@ data/
    GitHub Actions 云端机器          ← 每交易日 18:30 自动触发
         │  ② commit + push
         ▼
-   GitHub 仓库 data/ ──► jsDelivr CDN（国内加速） / raw.githubusercontent.com
+   GitHub 仓库 data/ ──► ghfast.top / gh-proxy.com / jsDelivr（国内加速）
         │  ③ 用户下载（首次全量，之后增量）
         ▼
    用户本地 ~/.cache/etf_lite       ← 缓存后不再重复请求
@@ -176,6 +177,29 @@ data/
 ```
 
 **你的电脑不用开机，也不用当服务器。** 数据存在 GitHub 服务器上，抓取在 GitHub 的云端机器上跑。
+
+## 自己建一份完整历史
+
+仓库里的 `data/` 是成品数据。如果你想从零抓一份，本地跑：
+
+```bash
+pip install -r requirements.txt
+
+python scripts/update_daily.py --refresh-list      # 拉 ETF 列表 + 当日快照
+python scripts/backfill_em.py --sleep 0.9          # 全量历史（东方财富，含成交额）
+```
+
+`backfill_em.py` 特点：
+
+- **一次请求返回上市至今全部历史**，不用按年分片
+- **自带成交额**，比只给 K 线的接口完整
+- **断点续跑**：进度写 `data/.backfill_progress.json`，中断后重跑自动跳过已完成
+- **限流熔断**：连续失败自动暂停，每隔一段时间探测，解封后继续
+
+```bash
+python scripts/backfill_em.py --retry-failed   # 只重跑上次失败的
+python scripts/backfill_em.py --refresh-all    # 忽略进度全部重抓
+```
 
 ## 自己部署一份（Fork 即用）
 
@@ -205,19 +229,22 @@ data/
 ## 常见问题
 
 **Q：数据从哪来？**  
-A：腾讯财经公开行情接口（`qt.gtimg.cn`），不经过任何第三方数据商转手加工。  
-代码在 `etf_lite/sources.py`，可自行核对。
+A：两条线，都是公开行情接口，不经第三方数据商转手加工：
+
+- **每日增量** —— 腾讯财经 `qt.gtimg.cn` 批量快照（字段全、一次可拉全部 ETF），代码在 `etf_lite/sources.py`
+- **历史回补** —— 东方财富 `push2his.eastmoney.com` 日线（一次返回上市至今、自带成交额），代码在 `scripts/backfill_em.py`
 
 **Q：会不会被限流、有额度吗？**  
-A：SDK 有本地缓存，一次下载后不再重复请求；公开仓库走 jsDelivr CDN，无严格限流。
+A：SDK 有本地缓存，一次下载后不再重复请求；下载走国内加速代理与 jsDelivr，无严格限流。  
+爬虫侧：东方财富对密集请求会做 IP 级封禁（返回空响应），`backfill_em.py` 内置熔断——连续失败就暂停探测，解封后自动续跑。
+
+**Q：下载慢？**  
+A：SDK 默认按 `ghfast.top → gh-proxy.com → ghproxy.net → jsDelivr → GitHub raw` 顺序尝试，前三个是实时代理。  
+如果都不通，可用 `ETF_LITE_CDN` 环境变量指定自己的源，或 clone 仓库后用 `ETFLite(local_dir="本地路径")` 离线读取。
 
 **Q：数据能商用吗？**  
 A：代码 MIT 协议随便用。行情数据版权归交易所 / 数据源所有，本项目仅作技术研究与学习用途，  
 不构成任何投资建议，据此交易风险自担。
-
-**Q：下载慢？**  
-A：默认走 jsDelivr CDN。如果仍慢，可设 `ETF_LITE_CACHE` 指定缓存目录，  
-或自行 clone 仓库后用 `ETFLite(local_dir="本地路径")` 离线读取。
 
 ## 参与贡献
 
