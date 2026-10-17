@@ -8,3 +8,6 @@ venv/
 .DS_Store
 *.part
 .pytest_cache/
+
+# 回填进度断点（本地状态，不入库）
+data/.backfill_progress.json

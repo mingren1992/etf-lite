@@ -9,11 +9,22 @@ from pathlib import Path
 DEFAULT_REPO = os.environ.get("ETF_LITE_REPO", "mingren1992/etf-lite")
 DEFAULT_BRANCH = os.environ.get("ETF_LITE_BRANCH", "main")
 
-# 下载源：jsDelivr CDN 优先（国内快、无限流），失败回退 GitHub raw
+# 下载源，按顺序尝试，任一成功即用。
+# 说明：raw.githubusercontent.com 在国内多数网络不可达，所以放在最后兜底；
+#      jsDelivr 对 @main 分支有约 12 小时缓存，日更场景下可能滞后，故排在实时代理之后。
 CDN_TEMPLATES = [
+    "https://ghfast.top/https://raw.githubusercontent.com/{repo}/{branch}/{path}",
+    "https://gh-proxy.com/https://raw.githubusercontent.com/{repo}/{branch}/{path}",
+    "https://ghproxy.net/https://raw.githubusercontent.com/{repo}/{branch}/{path}",
     "https://cdn.jsdelivr.net/gh/{repo}@{branch}/{path}",
     "https://raw.githubusercontent.com/{repo}/{branch}/{path}",
 ]
+
+# 可用环境变量自行指定下载源（多源用逗号分隔），例如：
+#   export ETF_LITE_CDN="https://my-mirror.com/{repo}/{branch}/{path}"
+_env_cdn = os.environ.get("ETF_LITE_CDN", "").strip()
+if _env_cdn:
+    CDN_TEMPLATES = [t.strip() for t in _env_cdn.split(",") if t.strip()]
 
 # 本地缓存目录
 DEFAULT_CACHE_DIR = Path(
