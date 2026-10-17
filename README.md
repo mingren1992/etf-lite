@@ -2,7 +2,7 @@
 
 **全市场 A 股 ETF 日行情，代码和数据一起开源。**
 
-1700+ 只 ETF，2015 年至今 **140 多万行**日线，每天在云端自动更新。  
+1700+ 只 ETF，**2005 年至今 160 万行**日线，每天在云端自动更新。  
 `pip install` 之后一行代码读出来，**不用注册、不用 token、没有调用额度**。
 
 ![Daily Data Update](https://github.com/mingren1992/etf-lite/actions/workflows/daily.yml/badge.svg)
@@ -47,8 +47,8 @@ A 股 ETF 数据一直有两个坑：
 | 费用 | 免费，无额度                          | 付费 / 注册 / 限流         |
 | 使用 | `pip install` 一行读               | 自己写爬虫自己建库            |
 | 数据 | 由作者统一更新                         | 每个用户各自抓，各自踩坑         |
-| 体量 | **140 万行仅约 25MB**（Parquet 列式压缩） | 同等数据 SQLite 要 300MB+ |
-| 覆盖 | 2015-01 至今，1718 只 ETF           | 视数据源而定               |
+| 体量 | **160 万行仅约 41MB**（Parquet 列式压缩） | 同等数据 SQLite 要 300MB+ |
+| 覆盖 | **2005-02 至今**，1691 只有数据（含已退市） | 视数据源而定 |
 
 ## 安装
 
@@ -72,8 +72,8 @@ etf.info()
 # {'repo': 'mingren1992/etf-lite',
 #  'latest_trade_date': '2026-10-16',
 #  'etf_count': 1718,
-#  'daily_years': [2015, ..., 2026],
-#  'daily_rows': 1427617,
+#  'daily_years': [2005, ..., 2026],
+#  'daily_rows': 1602292,
 #  'cache_dir': '/Users/you/.cache/etf_lite'}
 ```
 
@@ -125,9 +125,9 @@ data/
 ├── manifest.json                # 数据索引（SDK 先读它）
 ├── etf_list.parquet             # 1718 只 ETF 基础信息
 └── etf_daily/
-    ├── 2015.parquet             # 27,612 行
+    ├── 2005.parquet             #    213 行（最早的 ETF 只有 1 只）
     ├── ...
-    ├── 2025.parquet             # 284,828 行
+    ├── 2025.parquet             # 284,961 行
     └── 2026.parquet             # 当年文件，每日追加
 ```
 
@@ -144,19 +144,22 @@ data/
 
 **etf_daily/YYYY.parquet**
 
-| 字段                        | 类型    | 说明               |
-| ------------------------- | ----- | ---------------- |
-| ts_code                   | str   | `510300.SH`      |
-| trade_date                | str   | `YYYY-MM-DD`     |
-| open / high / low / close | float | 开 / 高 / 低 / 收（元） |
-| volume                    | int   | 成交量（**手**）       |
-| amount                    | float | 成交额（**万元**）      |
-| change_pct                | float | 涨跌幅 %            |
-| turnover_rate             | float | 换手率 %（历史回填行为空）   |
+| 字段                        | 类型    | 说明                      |
+| ------------------------- | ----- | ----------------------- |
+| ts_code                   | str   | `510300.SH`             |
+| trade_date                | str   | `YYYY-MM-DD`            |
+| open / high / low / close | float | 开 / 高 / 低 / 收（元）        |
+| volume                    | int   | 成交量（**手**）              |
+| amount                    | float | 成交额（**万元**），2018 年起齐全     |
+| change_pct                | float | 涨跌幅 %                   |
+| turnover_rate             | float | 换手率 %，**暂时为空**（需要份额数据，见路线图） |
 
-> **关于历史数据质量**：`amount`（成交额）与 `turnover_rate`（换手率）在早期的历史回填行中可能为空，
-> 因为部分行情源只给 K 线不给成交额。每个交易日的当日快照始终带全这两个字段，并自动覆盖同日历史值。
-> 如需完整成交额历史，用 `scripts/backfill_em.py`（东方财富源，自带成交额）重跑一遍即可。
+> **空值（NaN）的含义**：表示该数据源没有提供这个字段，不是 0。
+> 价格 / 成交量 100% 完整（2005 年至今，逐日无断档）。
+> 成交额 **2018 年起齐全**，更早的年份多数为空 —— 免费行情源的历史成交额普遍只回溯到 2018 年。
+> 换手率暂时整体为空：公开行情接口不提供 ETF 换手率，需要先有每日份额才能算，见路线图 `etf_share`。
+
+数据体检脚本：`python scripts/check_data.py`（检查重复行、负价格、高低倒挂、年度覆盖）。
 
 ## 工作原理
 
@@ -186,20 +189,30 @@ data/
 pip install -r requirements.txt
 
 python scripts/update_daily.py --refresh-list      # 拉 ETF 列表 + 当日快照
-python scripts/backfill_em.py --sleep 0.9          # 全量历史（东方财富，含成交额）
+python scripts/backfill_ths.py                     # 全量历史 OHLCV（同花顺，稳定不封）
+python scripts/backfill_xq.py                      # 补成交额 / 换手率（雪球）
+python scripts/check_data.py                       # 体检
 ```
 
-`backfill_em.py` 特点：
+两个回填脚本的分工：
 
-- **一次请求返回上市至今全部历史**，不用按年分片
-- **自带成交额**，比只给 K 线的接口完整
-- **断点续跑**：进度写 `data/.backfill_progress.json`，中断后重跑自动跳过已完成
-- **限流熔断**：连续失败自动暂停，每隔一段时间探测，解封后继续
+| 脚本 | 提供什么 | 特点 |
+|---|---|---|
+| `backfill_ths.py` | 价格 + 成交量，**2005 年至今全覆盖** | 一次请求返回上市至今全历史，1700 多只连抓不封 |
+| `backfill_xq.py` | 成交额 + 换手率，**2018 年起** | 只补字段不动价格，`update` 合并不覆盖已有值 |
+
+两者都是：
+
+- **断点续跑**：进度写 `data/.backfill_*_progress.json`，中断后重跑自动跳过已完成
+- **合并取优**：同一天若新旧两条记录，保留字段更全的那条，不会把真实成交额覆盖成空
 
 ```bash
-python scripts/backfill_em.py --retry-failed   # 只重跑上次失败的
-python scripts/backfill_em.py --refresh-all    # 忽略进度全部重抓
+python scripts/backfill_ths.py --retry-failed   # 只重跑上次失败的
+python scripts/backfill_ths.py --refresh-all    # 忽略进度全部重抓
 ```
+
+> 另有 `scripts/backfill_em.py`（东方财富源）：能补成交额，但会触发 IP 封禁，
+> 建议只在需要补 `amount` 时小批量跑，脚本内置熔断与等待。
 
 ## 自己部署一份（Fork 即用）
 
@@ -229,14 +242,18 @@ python scripts/backfill_em.py --refresh-all    # 忽略进度全部重抓
 ## 常见问题
 
 **Q：数据从哪来？**  
-A：两条线，都是公开行情接口，不经第三方数据商转手加工：
+A：三条线，都是公开行情接口，不经第三方数据商转手加工：
 
 - **每日增量** —— 腾讯财经 `qt.gtimg.cn` 批量快照（字段全、一次可拉全部 ETF），代码在 `etf_lite/sources.py`
-- **历史回补** —— 东方财富 `push2his.eastmoney.com` 日线（一次返回上市至今、自带成交额），代码在 `scripts/backfill_em.py`
+- **历史 OHLCV** —— 同花顺 `d.10jqka.com.cn` 日线（一次返回上市至今全部历史，稳定不封），代码在 `scripts/backfill_ths.py`
+- **成交额 / 换手率** —— 雪球 `stock.xueqiu.com` K 线（带 amount 与 turnoverrate），代码在 `scripts/backfill_xq.py`
+
+三条线统一 **不复权** 口径（同花顺用 `00`、雪球用 `type=normal`），可直接与行情软件对照。
 
 **Q：会不会被限流、有额度吗？**  
 A：SDK 有本地缓存，一次下载后不再重复请求；下载走国内加速代理与 jsDelivr，无严格限流。  
-爬虫侧：东方财富对密集请求会做 IP 级封禁（返回空响应），`backfill_em.py` 内置熔断——连续失败就暂停探测，解封后自动续跑。
+爬虫侧：同花顺 / 雪球接口温和，1700 多只全量抓一遍也不会封；
+东方财富会做 IP 级封禁（返回空响应），`backfill_em.py` 内置熔断——连续失败就暂停探测，解封后自动续跑。
 
 **Q：下载慢？**  
 A：SDK 默认按 `ghfast.top → gh-proxy.com → ghproxy.net → jsDelivr → GitHub raw` 顺序尝试，前三个是实时代理。  

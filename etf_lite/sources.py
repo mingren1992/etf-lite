@@ -172,14 +172,17 @@ def fetch_daily_snapshot(etf_list: pd.DataFrame, verbose: bool = True) -> pd.Dat
             close = _num(seq, I_CLOSE)
             if close <= 0:                       # 停牌 / 无效
                 continue
+            o, h, low = _num(seq, I_OPEN), _num(seq, I_HIGH), _num(seq, I_LOW)
+            if o <= 0 or h <= 0 or low <= 0:     # 当日无成交（停牌），不生成 K 线
+                continue
             code = seq[I_CODE]
             market = "SH" if seq[0].startswith("sh") else "SZ"
             records.append({
                 "ts_code": f"{code}.{market}",
                 "trade_date": f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}",
-                "open": _num(seq, I_OPEN),
-                "high": _num(seq, I_HIGH),
-                "low": _num(seq, I_LOW),
+                "open": o,
+                "high": h,
+                "low": low,
                 "close": close,
                 "volume": _num(seq, I_VOL, int),
                 "amount": _num(seq, I_AMOUNT),
