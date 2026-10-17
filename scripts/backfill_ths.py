@@ -109,7 +109,7 @@ def _parse(text: str, symbol: str, market: str) -> pd.DataFrame:
             "high": round((low + d_high) / pf, 4),
             "low": round(low / pf, 4),
             "close": round(close, 4),
-            "volume": int(V[i] // 100) if V else 0,      # 股 → 手
+            "volume": int(V[i]) if V else 0,            # 股/份（统一按"份"存储）
             "amount": float("nan"),                       # 同花顺无成交额
             "change_pct": round((close - prev_close) / prev_close * 100, 4) if prev_close else None,
             "turnover_rate": float("nan"),

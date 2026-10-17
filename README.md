@@ -149,7 +149,7 @@ data/
 | ts_code                   | str   | `510300.SH`             |
 | trade_date                | str   | `YYYY-MM-DD`            |
 | open / high / low / close | float | 开 / 高 / 低 / 收（元）        |
-| volume                    | int   | 成交量（**手**）              |
+| volume                    | int   | 成交量（**份**，1 手 = 100 份）    |
 | amount                    | float | 成交额（**万元**），2018 年起齐全     |
 | change_pct                | float | 涨跌幅 %                   |
 | turnover_rate             | float | 换手率 %，**暂时为空**（需要份额数据，见路线图） |

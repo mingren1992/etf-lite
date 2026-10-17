@@ -145,7 +145,7 @@ def fetch_daily_snapshot(etf_list: pd.DataFrame, verbose: bool = True) -> pd.Dat
     """抓取全部 ETF 的当日行情快照
 
     返回列：ts_code / trade_date / open / high / low / close /
-            volume(手) / amount(万元) / change_pct / turnover_rate
+            volume(份) / amount(万元) / change_pct / turnover_rate
     """
     codes = [
         ("sh" if m == "SH" else "sz") + s
@@ -184,7 +184,8 @@ def fetch_daily_snapshot(etf_list: pd.DataFrame, verbose: bool = True) -> pd.Dat
                 "high": h,
                 "low": low,
                 "close": close,
-                "volume": _num(seq, I_VOL, int),
+                # 腾讯返回的是"手"，×100 转成"份"，避免极小成交量被取整为 0
+                "volume": _num(seq, I_VOL, int) * 100,
                 "amount": _num(seq, I_AMOUNT),
                 "change_pct": _num(seq, I_CHG_PCT),
                 "turnover_rate": _num(seq, I_TURNOVER),

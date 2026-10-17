@@ -129,7 +129,7 @@ def _parse(klines: list[str], symbol: str, market: str) -> pd.DataFrame:
                 "high": float(p[3]),
                 "low": float(p[4]),
                 "close": float(p[2]),
-                "volume": int(float(p[5])),
+                "volume": int(float(p[5])) * 100,   # 手 → 份
                 "amount": float(p[6]) / 1e4,      # 元 → 万元，与每日快照口径一致
                 "change_pct": float(p[7]),
                 "turnover_rate": pd.NA,

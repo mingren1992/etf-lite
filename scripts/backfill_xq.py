@@ -98,7 +98,7 @@ def _parse(items: list, symbol: str, market: str) -> pd.DataFrame:
             "high": round(float(h), 4),
             "low": round(float(low), 4),
             "close": round(close, 4),
-            "volume": int(round(int(vol) / 100)) if vol else 0,            # 股 → 手
+            "volume": int(round(int(vol))) if vol else 0,                  # 股/份（统一按"份"存储）
             "amount": round(float(amt) / 10000, 4) if amt else float("nan"),  # 元 → 万元
             "change_pct": round(float(pct), 4) if pct is not None else (
                 round((close - prev) / prev * 100, 4) if prev else float("nan")),

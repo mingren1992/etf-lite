@@ -34,7 +34,7 @@ pd.read_parquet("https://cdn.jsdelivr.net/gh/mingren1992/etf-lite@main/data/etf_
 `etf_list.parquet`：`ts_code` / `symbol` / `market` / `name` / `last_price` / `change_pct`
 
 `etf_daily/YYYY.parquet`：`ts_code` / `trade_date` / `open` / `high` / `low` / `close` /
-`volume`（手）/ `amount`（万元）/ `change_pct`（%）/ `turnover_rate`（%）
+`volume`（份）/ `amount`（万元）/ `change_pct`（%）/ `turnover_rate`（%）
 
 ## 更新节奏
 
