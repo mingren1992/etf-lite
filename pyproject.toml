@@ -5,16 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "etf-lite"
 version = "0.1.0"
-description = "轻量 A 股 ETF 数据 SDK：pandas 一行代码读取全市场 ETF 日行情"
+description = "轻量 A 股 ETF 数据 SDK：全市场 1700+ 只 ETF 日行情，本地一行代码读取"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 requires-python = ">=3.9"
-keywords = ["etf", "a-share", "china", "finance", "data", "quant"]
+authors = [{ name = "mingren1992", email = "mingren1992@users.noreply.github.com" }]
+keywords = ["etf", "a-share", "china", "finance", "data", "quant", "tushare-alternative"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Office/Business :: Financial :: Investment",
 ]
 dependencies = [
@@ -24,8 +27,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-github-name/etf-lite"
-Source = "https://github.com/your-github-name/etf-lite"
+Homepage = "https://github.com/mingren1992/etf-lite"
+Repository = "https://github.com/mingren1992/etf-lite"
+Issues = "https://github.com/mingren1992/etf-lite/issues"
+Changelog = "https://github.com/mingren1992/etf-lite/commits/main"
 
 [tool.setuptools.packages.find]
 include = ["etf_lite*"]

@@ -4,9 +4,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-# ── 数据托管仓库（开源后改成你自己的 GitHub 用户名/仓库名）──────────────
-# 例如 "bazong/etf-lite"
-DEFAULT_REPO = os.environ.get("ETF_LITE_REPO", "your-github-name/etf-lite")
+# ── 数据托管仓库 ─────────────────────────────────────────────────────
+# 也可用环境变量覆盖：export ETF_LITE_REPO=someone/etf-lite
+DEFAULT_REPO = os.environ.get("ETF_LITE_REPO", "mingren1992/etf-lite")
 DEFAULT_BRANCH = os.environ.get("ETF_LITE_BRANCH", "main")
 
 # 下载源：jsDelivr CDN 优先（国内快、无限流），失败回退 GitHub raw

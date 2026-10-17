@@ -28,7 +28,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Crawl today's data
-        run: python scripts/update_daily.py
+        # --refresh-list：每次重扫 ETF 列表（CI 里文件 mtime 不可靠，约多花 40 秒）
+        run: python scripts/update_daily.py --refresh-list
 
       - name: Commit and push data
         run: |

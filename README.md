@@ -1,141 +1,232 @@
 # etf-lite
 
-全市场 A 股 ETF 日行情数据 —— **代码 + 数据一起开源**的最小闭环。
+**全市场 A 股 ETF 日行情，代码和数据一起开源。**
 
-数据每天在 GitHub Actions 云端自动抓取并提交进本仓库，用户 `pip install` 后一行代码读取，
-不需要注册、不需要 token、没有调用额度。
+1700+ 只 ETF，2015 年至今 **140 多万行**日线，每天在云端自动更新。  
+`pip install` 之后一行代码读出来，**不用注册、不用 token、没有调用额度**。
+
+![Daily Data Update](https://github.com/mingren1992/etf-lite/actions/workflows/daily.yml/badge.svg)
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 
 ```python
 import etf_lite
 
-etf = etf_lite.ETFLite()                  # 默认连本仓库托管的数据
-etf.info()                                # 看数据概况
+etf = etf_lite.ETFLite()
 
-etf.get_etf_list()                        # 全市场 ETF 列表
+etf.get_etf_list()                        # 全市场 ETF 列表（1718 只）
 etf.get_etf_daily("510300")               # 沪深300ETF 全部历史
 etf.get_etf_daily("510300", "2024-01-01") # 指定区间
-etf.get_etf_daily(start="2026-01-01")     # 全市场某段时间
+etf.get_etf_daily(start="2026-01-01")     # 全市场自某日起
+```
+
+```
+        ts_code trade_date   open   high    low  close    volume     amount  change_pct
+510300.SH 2026-10-16    4.255  4.282  4.200  4.236  37995085  1609279.0       -0.14
 ```
 
 ---
 
-## 一、数据到底存在哪里
+## 为什么做这个
 
-| 存放位置 | 用途 | 说明 |
-|---------|------|------|
-| **GitHub 仓库**（`data/` 目录） | 线上数据源 | 真正的“数据服务器”，所有人从这里下载 |
-| jsDelivr CDN | 加速分发 | 自动镜像 GitHub 公开仓库，国内访问快 |
-| 用户本地 `~/.cache/etf_lite/` | 用户侧缓存 | 首次下载后本地复用，不重复请求 |
-| 你自己的 Mac | 只做开发 | 写代码、改爬虫、验证数据；关机不影响线上更新 |
+A 股 ETF 数据一直有两个坑：
 
-**关键点：抓取不跑在你的电脑上，跑在 GitHub 的云端机器上**（`.github/workflows/daily.yml`），
-每交易日北京时间 18:30 自动执行 → 抓数据 → commit → push。你的电脑不需要开机。
+1. **要么贵** —— Wind、聚宽、Tushare Pro 好用的都要付费，额度还卡人
+2. **要么散** —— AkShare、BaoStock 免费，但每次都得自己写爬虫、自己建库、自己维护；  
+   数据分散在第三方网站，格式还常变
 
-## 二、目录结构
+这个项目的做法是：**把数据抓一次，然后让全世界都能直接读。**  
+抓取不落在你的电脑上，落在 GitHub 的免费云端机器上，每天收盘后自动跑完。
 
-```
-etf-lite/
-├── .github/workflows/daily.yml   # 云端定时任务（每天自动爬 + 提交）
-├── etf_lite/                     # 用户 SDK
-│   ├── api.py                    #   ETFLite 类：下载 / 缓存 / 查询
-│   ├── sources.py                #   爬虫：腾讯财经直连
-│   └── config.py                 #   仓库地址、CDN、缓存路径
-├── scripts/                      # 作者侧脚本
-│   ├── update_daily.py           #   每日增量更新（Actions 调它）
-│   ├── backfill_from_sqlite.py   #   一次性：老 SQLite 库 → parquet
-│   ├── backfill_history.py       #   一次性：爬历史补缺口
-│   └── common.py                 #   manifest 读写工具
-├── data/                         # ★ 对外托管的数据
-│   ├── manifest.json             #   数据索引（用户先读它）
-│   ├── etf_list.parquet          #   ETF 列表
-│   └── etf_daily/2026.parquet    #   按年切分的日行情
-├── pyproject.toml
-└── requirements.txt
-```
+## 核心卖点
 
-## 三、数据规格
+|    | etf-lite                        | 传统方案                 |
+| -- | ------------------------------- | -------------------- |
+| 费用 | 免费，无额度                          | 付费 / 注册 / 限流         |
+| 使用 | `pip install` 一行读               | 自己写爬虫自己建库            |
+| 数据 | 由作者统一更新                         | 每个用户各自抓，各自踩坑         |
+| 体量 | **140 万行仅约 25MB**（Parquet 列式压缩） | 同等数据 SQLite 要 300MB+ |
+| 覆盖 | 2015-01 至今，1718 只 ETF           | 视数据源而定               |
 
-`etf_list.parquet`
-
-| 字段 | 含义 |
-|------|------|
-| ts_code | 带市场后缀，如 `510300.SH` |
-| symbol / market / name | 6 位代码 / SH\|SZ / 名称 |
-| last_price | 最近一次快照价 |
-
-`etf_daily/YYYY.parquet`
-
-| 字段 | 含义 |
-|------|------|
-| ts_code | 如 `510300.SH` |
-| trade_date | `YYYY-MM-DD` |
-| open / high / low / close | 元 |
-| volume | 成交量（手） |
-| amount | 成交额（万元） |
-| change_pct | 涨跌幅 % |
-| turnover_rate | 换手率 %（历史回填行为空） |
-
-## 四、你要提供什么
-
-只需要三样，都不涉及把账号密码交出来：
-
-1. **一个 GitHub 账号**（免费注册即可）—— 数据托管和云端定时任务都靠它
-2. **在 GitHub 上建一个空仓库**，比如 `etf-lite`，设为 public（公开才能让别人免费用）
-3. **在你电脑上执行两条命令**把本地代码推上去（`git remote add` + `git push`）
-   —— 用你自己的凭据，我看不到也不该看到
-
-> PyPI 发布是可选的第二步。不发布也能用：
-> `pip install git+https://github.com/你的名字/etf-lite.git`
-
-## 五、上线步骤（照着做）
+## 安装
 
 ```bash
-# 1. 在你电脑上，进入本目录
-cd etf-lite
+# 从 PyPI（发布后）
+pip install etf-lite
 
-# 2. 首次初始化历史数据（老库导出，已跑通：2015-2026 共 142.7 万行）
-python scripts/backfill_from_sqlite.py --db ../etf-index-data/data/etf_data.db
-#    或者从网上爬历史：
-# python scripts/backfill_history.py --start 2015-01-01
-
-# 2b. 补缺口（老库截止 2026-07-03，中间 3 个多月是空的，约 15 分钟）
-python scripts/backfill_history.py --start 2026-07-04
-
-# 3. 跑一次当天增量，确认全链路通
-python scripts/update_daily.py
-
-# 4. 绑定你自己的仓库并推送
-git remote add origin https://github.com/你的名字/etf-lite.git
-git push -u origin main
-
-# 5. 到 GitHub 仓库 → Actions 页面 → 点一次 "Run workflow" 验证云端能跑
-
-# 6.（可选）发布到 PyPI，让全世界 pip install
-pip install build && python -m build
-twine upload dist/*
+# 直接从 GitHub 装（现在就能用）
+pip install git+https://github.com/mingren1992/etf-lite.git
 ```
 
-## 六、额度与限制
+## 使用
 
-| 项目 | 额度 |
-|------|------|
-| 公开仓库 Actions 运行时长 | 不限（私有仓库 2000 分钟/月，本项目每天约 5 分钟也够用） |
-| GitHub raw 下载 | 匿名约 60 次/小时/IP，带 token 5000 次/小时；SDK 有缓存，正常使用不会触发 |
-| jsDelivr CDN | 公开仓库免费、无严格限流，建议作为首选下载源 |
-| 单文件体积 | raw 直链上限 100MB；按年切分后单文件约 2-8MB，远低于上限 |
-| 存储 | 仓库建议 < 1GB；超过就改用 GitHub Releases 或 Git LFS |
+### 1. 看数据概况
 
-## 七、扩展路线
+```python
+import etf_lite
 
-当前是最小闭环（只有 ETF 列表 + 日行情）。同一套机制可以直接复制到：
+etf = etf_lite.ETFLite()
+etf.info()
+# {'repo': 'mingren1992/etf-lite',
+#  'latest_trade_date': '2026-10-16',
+#  'etf_count': 1718,
+#  'daily_years': [2015, ..., 2026],
+#  'daily_rows': 1427617,
+#  'cache_dir': '/Users/you/.cache/etf_lite'}
+```
 
-- `data/etf_nav/` —— 净值（单位净值 / 累计净值）
-- `data/etf_share/` —— 份额（沪市 22:20 公布、深市 Excel）
-- `data/etf_pcf/` —— 每日申赎清单（PCF），ETF 真实持仓明细
-- `data/index_rules/` —— 指数编制方案结构化
+### 2. 拿列表
 
-每加一层，就是给 `scripts/` 多一个爬虫 + 给 `manifest.json` 多一个 dataset 条目，SDK 不用改。
+```python
+lst = etf.get_etf_list()
+lst[lst.name.str.contains("沪深300")]
+```
+
+### 3. 拿行情
+
+```python
+# 单只，全历史
+df = etf.get_etf_daily("510300")
+
+# 区间
+df = etf.get_etf_daily("510300", start="2024-01-01", end="2026-10-16")
+
+# 批量：某天全市场成交额 Top10
+today = etf.get_etf_daily(start=etf.info()["latest_trade_date"])
+today.nlargest(10, "amount")[["ts_code", "close", "change_pct", "amount"]]
+
+# 归一化净值曲线：一眼看出谁跑得强
+pivot = etf.get_etf_daily(start="2025-01-01").pivot(
+    index="trade_date", columns="ts_code", values="close")
+(pivot / pivot.iloc[0] - 1).plot()
+```
+
+### 4. 参数说明
+
+| 方法                | 参数              | 说明                                       |
+| ----------------- | --------------- | ---------------------------------------- |
+| `ETFLite()`       | `repo=`         | 换数据源仓库，默认官方                              |
+|                   | `cache_dir=`    | 本地缓存目录，默认 `~/.cache/etf_lite`            |
+|                   | `local_dir=`    | 直接读本地仓库（离线 / 自建）                         |
+|                   | `verbose=True`  | 打印下载过程                                   |
+| `get_etf_list()`  | `force=True`    | 忽略缓存强制重新下载                               |
+| `get_etf_daily()` | `code`          | 6 位代码 `510300` 或带后缀 `510300.SH`，留空 = 全市场 |
+|                   | `start` / `end` | `2024-01-01` 或 `20240101`                |
+| `clear_cache()`   | —               | 清空本地缓存                                   |
+
+## 数据规格
+
+数据托管在本仓库 `data/` 目录，按年切分：
+
+```
+data/
+├── manifest.json                # 数据索引（SDK 先读它）
+├── etf_list.parquet             # 1718 只 ETF 基础信息
+└── etf_daily/
+    ├── 2015.parquet             # 27,612 行
+    ├── ...
+    ├── 2025.parquet             # 284,828 行
+    └── 2026.parquet             # 当年文件，每日追加
+```
+
+**etf_list.parquet**
+
+| 字段         | 类型    | 说明                  |
+| ---------- | ----- | ------------------- |
+| ts_code    | str   | `510300.SH`         |
+| symbol     | str   | 6 位代码               |
+| market     | str   | `SH` / `SZ`         |
+| name       | str   | 简称，如 `沪深300ETF华泰柏瑞` |
+| last_price | float | 最近一次快照价             |
+| change_pct | float | 当日涨跌幅 %             |
+
+**etf_daily/YYYY.parquet**
+
+| 字段                        | 类型    | 说明               |
+| ------------------------- | ----- | ---------------- |
+| ts_code                   | str   | `510300.SH`      |
+| trade_date                | str   | `YYYY-MM-DD`     |
+| open / high / low / close | float | 开 / 高 / 低 / 收（元） |
+| volume                    | int   | 成交量（**手**）       |
+| amount                    | float | 成交额（**万元**）      |
+| change_pct                | float | 涨跌幅 %            |
+| turnover_rate             | float | 换手率 %（历史回填行为空）   |
+
+> 历史回填的行 `amount` 为 0、`turnover_rate` 为空，是数据源只给 K 线不给成交额所致；  
+> 每个当日快照都带全这两个字段，并自动覆盖同日历史值。
+
+## 工作原理
+
+```
+   交易所 / 行情源
+        │  ① 爬取
+        ▼
+   GitHub Actions 云端机器          ← 每交易日 18:30 自动触发
+        │  ② commit + push
+        ▼
+   GitHub 仓库 data/ ──► jsDelivr CDN（国内加速） / raw.githubusercontent.com
+        │  ③ 用户下载（首次全量，之后增量）
+        ▼
+   用户本地 ~/.cache/etf_lite       ← 缓存后不再重复请求
+        │  ④
+        ▼
+   pandas DataFrame
+```
+
+**你的电脑不用开机，也不用当服务器。** 数据存在 GitHub 服务器上，抓取在 GitHub 的云端机器上跑。
+
+## 自己部署一份（Fork 即用）
+
+1. 点右上角 **Fork**（或直接建个新仓库）
+2. 仓库 **Settings → Actions → General → Workflow permissions** 勾选 **Read and write permissions**
+3. **Actions** 页面点一次 **Run workflow** 验证
+4. 改两处指向你的仓库：
+   - `etf_lite/config.py` → `DEFAULT_REPO = "你的用户名/etf-lite"`
+   - `pyproject.toml` → `[project.urls]`
+
+之后每天自动更新，不用管。
+
+### 想扩展数据集？
+
+每加一层数据，只需要三件事：给 `scripts/` 加一个爬虫、给 `data/` 加一个目录、  
+给 `manifest.json` 加一条 dataset 条目。**SDK 不用改。**
+
+后续规划：
+
+- [x] `etf_daily` —— 日行情
+- [ ] `etf_nav` —— 单位净值 / 累计净值
+- [ ] `etf_share` —— 每日份额变动（沪市 22:20 公布、深市 Excel）
+- [ ] `etf_pcf` —— 每日申赎清单，ETF 真实持仓明细
+- [ ] `index_rules` —— 指数编制方案结构化
+- [ ] `rebalance_prediction` —— 基于编制规则的调样预测
+
+## 常见问题
+
+**Q：数据从哪来？**  
+A：腾讯财经公开行情接口（`qt.gtimg.cn`），不经过任何第三方数据商转手加工。  
+代码在 `etf_lite/sources.py`，可自行核对。
+
+**Q：会不会被限流、有额度吗？**  
+A：SDK 有本地缓存，一次下载后不再重复请求；公开仓库走 jsDelivr CDN，无严格限流。
+
+**Q：数据能商用吗？**  
+A：代码 MIT 协议随便用。行情数据版权归交易所 / 数据源所有，本项目仅作技术研究与学习用途，  
+不构成任何投资建议，据此交易风险自担。
+
+**Q：下载慢？**  
+A：默认走 jsDelivr CDN。如果仍慢，可设 `ETF_LITE_CACHE` 指定缓存目录，  
+或自行 clone 仓库后用 `ETFLite(local_dir="本地路径")` 离线读取。
+
+## 参与贡献
+
+Issue / PR 都欢迎。新增数据源请附上接口示例与字段说明，方便核对。
+
+## License
+
+[MIT](LICENSE)
 
 ---
 
-MIT License
+数据仅供研究学习，不构成投资建议。

@@ -1,0 +1,4 @@
+# 让 parquet 按二进制处理，避免 git diff 卡死
+*.parquet binary
+*.xlsx binary
+*.pdf binary
