@@ -1,0 +1,92 @@
+name: Backfill Amount & Turnover (Eastmoney)
+
+# 用途：用东方财富 K 线接口一次性补齐两个缺口字段
+#   - amount（成交额）：2018 年之前缺失
+#   - turnover_rate（换手率）：2018 年之后缺失
+#
+# 触发方式二选一：
+#   1) 网页手动：Actions → Backfill Amount & Turnover → Run workflow
+#   2) 本地 push 触发：修改 .github/triggers/backfill-em.txt 后提交推送
+#
+# 为什么放云端跑：本机访问 push2his.eastmoney.com 被拒（IP 级风控），
+# GitHub Actions 的机房 IP 通常不受影响。
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "只跑前 N 只（0 = 全市场）"
+        required: false
+        default: "0"
+      sleep:
+        description: "每只间隔秒数（越大越不易被封，建议 0.5-0.8）"
+        required: false
+        default: "0.5"
+      codes:
+        description: "指定代码，逗号分隔（留空 = 全市场，例：510300,510050）"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - ".github/triggers/backfill-em.txt"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backfill-em
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Connectivity check (eastmoney)
+        run: python scripts/backfill_em_v2.py --check
+
+      - name: Backfill amount & turnover_rate
+        env:
+          IN_LIMIT: ${{ github.event.inputs.limit }}
+          IN_SLEEP: ${{ github.event.inputs.sleep }}
+          IN_CODES: ${{ github.event.inputs.codes }}
+        run: |
+          LIMIT="${IN_LIMIT:-0}"
+          SLEEP="${IN_SLEEP:-0.5}"
+          CODES="${IN_CODES:-}"
+          echo "参数：limit=$LIMIT sleep=$SLEEP codes=$CODES"
+          if [ -n "$CODES" ]; then
+            python scripts/backfill_em_v2.py --limit "$LIMIT" --sleep "$SLEEP" --codes "$CODES" --refresh-all
+          else
+            python scripts/backfill_em_v2.py --limit "$LIMIT" --sleep "$SLEEP" --refresh-all
+          fi
+
+      - name: Data health check
+        run: python scripts/check_data.py || true
+
+      - name: Commit and push data
+        run: |
+          git config user.name  "etf-lite-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "没有变化，跳过提交"
+          else
+            git commit -m "data: backfill amount & turnover_rate (eastmoney)"
+            git pull --rebase --autostash origin main
+            git push
+          fi
