@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "updated_at": "2026-10-17T20:52:48+08:00",
-  "latest_trade_date": "2026-10-16",
+  "updated_at": "2026-10-20T01:09:04+08:00",
+  "latest_trade_date": "2026-10-19",
   "datasets": {
     "etf_list": {
       "path": "data/etf_list.parquet",
-      "rows": 1718,
+      "rows": 1719,
       "columns": [
         "ts_code",
         "symbol",
@@ -14,10 +14,10 @@
         "last_price",
         "change_pct"
       ],
-      "bytes": 52265
+      "bytes": 52226
     },
     "etf_daily": {
-      "rows": 1602292,
+      "rows": 1603854,
       "columns": [
         "ts_code",
         "trade_date",
@@ -107,61 +107,61 @@
           "year": 2017,
           "path": "data/etf_daily/2017.parquet",
           "rows": 37205,
-          "bytes": 678954
+          "bytes": 679022
         },
         {
           "year": 2018,
           "path": "data/etf_daily/2018.parquet",
           "rows": 40922,
-          "bytes": 1020865
+          "bytes": 1023094
         },
         {
           "year": 2019,
           "path": "data/etf_daily/2019.parquet",
           "rows": 50951,
-          "bytes": 1265643
+          "bytes": 1267897
         },
         {
           "year": 2020,
           "path": "data/etf_daily/2020.parquet",
           "rows": 78597,
-          "bytes": 2025057
+          "bytes": 2027184
         },
         {
           "year": 2021,
           "path": "data/etf_daily/2021.parquet",
           "rows": 120436,
-          "bytes": 3035215
+          "bytes": 3037777
         },
         {
           "year": 2022,
           "path": "data/etf_daily/2022.parquet",
           "rows": 168423,
-          "bytes": 4128309
+          "bytes": 4130876
         },
         {
           "year": 2023,
           "path": "data/etf_daily/2023.parquet",
           "rows": 195515,
-          "bytes": 4750001
+          "bytes": 4752455
         },
         {
           "year": 2024,
           "path": "data/etf_daily/2024.parquet",
           "rows": 231858,
-          "bytes": 5611529
+          "bytes": 5614097
         },
         {
           "year": 2025,
           "path": "data/etf_daily/2025.parquet",
           "rows": 284961,
-          "bytes": 7102247
+          "bytes": 7105146
         },
         {
           "year": 2026,
           "path": "data/etf_daily/2026.parquet",
-          "rows": 272499,
-          "bytes": 6850666
+          "rows": 274061,
+          "bytes": 6890468
         }
       ]
     }
