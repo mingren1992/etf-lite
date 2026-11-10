@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated_at": "2026-11-10T05:00:56+08:00",
-  "latest_trade_date": "2026-11-09",
+  "updated_at": "2026-11-10T15:35:06+08:00",
+  "latest_trade_date": "2026-11-10",
   "datasets": {
     "etf_list": {
       "path": "data/etf_list.parquet",
@@ -14,10 +14,10 @@
         "last_price",
         "change_pct"
       ],
-      "bytes": 52168
+      "bytes": 52608
     },
     "etf_daily": {
-      "rows": 1627317,
+      "rows": 1628881,
       "columns": [
         "ts_code",
         "trade_date",
@@ -160,8 +160,8 @@
         {
           "year": 2026,
           "path": "data/etf_daily/2026.parquet",
-          "rows": 297524,
-          "bytes": 7407892
+          "rows": 299088,
+          "bytes": 7439810
         }
       ]
     }
