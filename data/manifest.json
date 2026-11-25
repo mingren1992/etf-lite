@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-25T16:57:00+08:00",
+  "updated_at": "2026-11-26T04:06:33+08:00",
   "latest_trade_date": "2026-11-25",
   "datasets": {
     "etf_list": {
@@ -161,7 +161,7 @@
           "year": 2026,
           "path": "data/etf_daily/2026.parquet",
           "rows": 316307,
-          "bytes": 7816956
+          "bytes": 7816954
         }
       ]
     }
